@@ -1,0 +1,15 @@
+{
+  "name": "Calculator",
+  "short_name": "Calculator",
+  "start_url": "/Mjupa-chat/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/900/900618.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
