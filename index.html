@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Calculator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #1a1a1a;
+    --calc-bg: #2a2a2a;
+    --btn: #3a3a3a;
+    --btn-op: #ff9500;
+    --btn-special: #505050;
+    --display: #000;
+    --text: #fff;
+    --chat-bg: #0d1117;
+    --msg-me: #005c4b;
+    --msg-other: #1e2b35;
+    --input-bg: #1e2b35;
+    --green: #00d26a;
+    --header: #111b21;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Outfit', sans-serif;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen {
+    width: 100%;
+    max-width: 420px;
+    height: 100dvh;
+    position: absolute;
+    transition: transform 0.4s cubic-bezier(0.77,0,0.175,1);
+  }
+
+  .screen.off-left  { transform: translateX(-110%); pointer-events: none; }
+  .screen.off-right { transform: translateX(110%);  pointer-events: none; }
+  .screen.on        { transform: translateX(0); }
+
+  /* ===== CALCULATOR ===== */
+  #s-calc {
+    background: var(--calc-bg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .calc-display {
+    background: var(--display);
+    padding: 20px 24px 12px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+  }
+
+  .calc-history { font-family:'Share Tech Mono',monospace; color:#555; font-size:17px; min-height:24px; }
+  .calc-value   { font-family:'Share Tech Mono',monospace; color:#fff; font-size:clamp(34px,10vw,52px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+
+  .calc-label { font-size:10px; color:#2a2a2a; text-align:center; padding:3px; letter-spacing:2px; background:#1a1a1a; }
+
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 1px;
+    background: #111;
+    flex: 1;
+  }
+
+  .cb {
+    background: var(--btn); color:#fff; border:none;
+    font-size: clamp(18px,5vw,24px);
+    font-family: 'Outfit',sans-serif;
+    cursor: pointer;
+    display: flex; align-items:center; justify-content:center;
+    transition: filter 0.1s, transform 0.08s;
+    user-select: none;
+  }
+  .cb:active { transform:scale(0.93); filter:brightness(1.3); }
+  .cb.op      { background:var(--btn-op); font-weight:600; }
+  .cb.sp      { background:var(--btn-special); }
+  .cb.zero    { grid-column:span 2; justify-content:flex-start; padding-left:28px; }
+
+  /* ===== PIN ===== */
+  #s-pin {
+    background: var(--chat-bg);
+    display: flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;
+  }
+
+  .pin-logo {
+    width:68px; height:68px; border-radius:20px;
+    background: linear-gradient(135deg,#00d26a,#005c4b);
+    display:flex; align-items:center; justify-content:center; font-size:34px;
+    box-shadow: 0 0 30px rgba(0,210,106,0.35);
+  }
+
+  .pin-title { color:#fff; font-size:22px; font-weight:700; }
+  .pin-sub   { color:#666; font-size:13px; text-align:center; padding:0 30px; }
+
+  .pin-dots { display:flex; gap:14px; }
+  .pin-dot  {
+    width:14px; height:14px; border-radius:50%; background:#333;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .pin-dot.filled { background:var(--green); transform:scale(1.2); }
+  .pin-dot.error  { background:#ff3b30; }
+
+  .pin-keypad {
+    display:grid; grid-template-columns:repeat(3,72px); grid-template-rows:repeat(4,72px); gap:10px;
+  }
+  .pk {
+    width:72px; height:72px; border-radius:50%;
+    background:#1e2b35; border:none; color:#fff;
+    font-size:22px; font-family:'Outfit',sans-serif; font-weight:600;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .pk:active { background:#2e4055; transform:scale(0.92); }
+  .pk.empty  { background:transparent; cursor:default; }
+  .pk.del    { background:transparent; font-size:20px; }
+
+  /* ===== USERNAME SETUP ===== */
+  #s-username {
+    background: var(--chat-bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; padding:30px;
+  }
+
+  .setup-logo { font-size:60px; }
+  .setup-title { color:#fff; font-size:22px; font-weight:700; text-align:center; }
+  .setup-sub   { color:#8696a0; font-size:13px; text-align:center; }
+
+  .setup-input {
+    width:100%; background:#1e2b35; border:2px solid #2a3942;
+    border-radius:14px; padding:14px 18px; color:#fff;
+    font-size:16px; font-family:'Outfit',sans-serif; outline:none;
+    transition: border-color 0.2s;
+  }
+  .setup-input:focus { border-color:var(--green); }
+  .setup-input::placeholder { color:#8696a0; }
+
+  .setup-btn {
+    width:100%; background:var(--green); color:#fff; border:none;
+    border-radius:14px; padding:15px; font-size:17px;
+    font-family:'Outfit',sans-serif; font-weight:700; cursor:pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .setup-btn:active { transform:scale(0.97); background:#00b85d; }
+
+  /* ===== ROOMS LIST ===== */
+  #s-rooms {
+    background: var(--chat-bg);
+    display:flex; flex-direction:column;
+  }
+
+  .rooms-header {
+    background:var(--header); padding:16px;
+    border-bottom:1px solid #1f2e38; flex-shrink:0;
+  }
+  .rooms-title {
+    color:#fff; font-size:20px; font-weight:700;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .rooms-user  { color:var(--green); font-size:12px; margin-top:3px; }
+
+  .fab {
+    width:36px; height:36px; border-radius:50%;
+    background:var(--green); border:none; color:#fff;
+    font-size:24px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition: transform 0.1s;
+  }
+  .fab:active { transform:scale(0.9); }
+
+  .rooms-list { flex:1; overflow-y:auto; }
+
+  .room-item {
+    display:flex; align-items:center; gap:14px;
+    padding:12px 16px; cursor:pointer;
+    border-bottom:1px solid #111b21;
+    transition: background 0.15s;
+  }
+  .room-item:active { background:#1e2b35; }
+
+  .room-av {
+    width:52px; height:52px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; flex-shrink:0; font-weight:700; color:#fff;
+  }
+
+  .room-details { flex:1; min-width:0; }
+  .room-name    { color:#e9edef; font-size:16px; font-weight:600; }
+  .room-preview { color:#8696a0; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .room-meta    { text-align:right; flex-shrink:0; }
+  .room-time    { color:#8696a0; font-size:11px; }
+
+  .unread {
+    background:var(--green); color:#fff; border-radius:50%;
+    width:20px; height:20px; font-size:11px;
+    display:flex; align-items:center; justify-content:center;
+    margin:4px 0 0 auto;
+  }
+
+  .lock-btn {
+    background:none; border:1px solid #ff3b30; color:#ff3b30;
+    border-radius:20px; padding:8px 16px; font-size:13px;
+    font-family:'Outfit',sans-serif; cursor:pointer;
+    margin:10px 16px; width:calc(100% - 32px);
+    transition: background 0.15s;
+  }
+  .lock-btn:active { background:rgba(255,59,48,0.1); }
+
+  /* ===== CHAT ===== */
+  #s-chat {
+    background: var(--chat-bg);
+    display:flex; flex-direction:column;
+  }
+
+  .chat-header {
+    background:var(--header); padding:10px 14px;
+    display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid #1f2e38; flex-shrink:0;
+  }
+
+  .back-btn {
+    background:none; border:none; color:var(--green);
+    font-size:26px; cursor:pointer; padding:2px 6px 2px 0;
+  }
+
+  .chat-av {
+    width:40px; height:40px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:700; color:#fff; flex-shrink:0;
+  }
+
+  .chat-info { flex:1; }
+  .chat-name   { color:#fff; font-size:16px; font-weight:600; }
+  .chat-status { color:var(--green); font-size:11px; }
+
+  .msgs {
+    flex:1; overflow-y:auto; padding:10px 10px;
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .msgs::-webkit-scrollbar { width:3px; }
+  .msgs::-webkit-scrollbar-thumb { background:#2a3942; border-radius:2px; }
+
+  .date-chip {
+    text-align:center; color:#8696a0; font-size:11px;
+    background:#182229; padding:4px 10px; border-radius:8px;
+    align-self:center; margin:6px 0; letter-spacing:0.3px;
+  }
+
+  .msg {
+    max-width:80%; padding:7px 12px 18px; border-radius:8px;
+    position:relative; word-break:break-word;
+    font-size:14px; line-height:1.45;
+    animation: popIn 0.2s ease;
+  }
+  @keyframes popIn {
+    from { opacity:0; transform:scale(0.88) translateY(8px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+  .msg.me    { background:var(--msg-me); color:#e9edef; align-self:flex-end; border-radius:8px 8px 0 8px; }
+  .msg.other { background:var(--msg-other); color:#e9edef; align-self:flex-start; border-radius:8px 8px 8px 0; }
+
+  .msg-sender { font-size:11px; color:var(--green); font-weight:600; margin-bottom:2px; }
+  .msg-time   { position:absolute; bottom:4px; right:8px; font-size:10px; color:#8696a0; }
+  .msg.me .msg-time { color:#8fbc9e; }
+
+  .typing-indicator {
+    align-self:flex-start; background:var(--msg-other);
+    padding:10px 16px; border-radius:8px 8px 8px 0;
+    display:none; gap:4px; align-items:center;
+  }
+  .typing-indicator.show { display:flex; }
+  .typing-dot {
+    width:7px; height:7px; border-radius:50%; background:#8696a0;
+    animation: bounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay:0.2s; }
+  .typing-dot:nth-child(3) { animation-delay:0.4s; }
+  @keyframes bounce {
+    0%,60%,100% { transform:translateY(0); }
+    30% { transform:translateY(-6px); }
+  }
+
+  .input-area {
+    background:var(--header); padding:8px 10px;
+    display:flex; align-items:flex-end; gap:8px;
+    flex-shrink:0; border-top:1px solid #1f2e38;
+  }
+
+  .input-box {
+    flex:1; background:var(--input-bg); border:none; border-radius:22px;
+    padding:11px 16px; color:#e9edef; font-size:15px;
+    font-family:'Outfit',sans-serif; resize:none;
+    max-height:120px; min-height:44px; outline:none; line-height:1.4;
+  }
+  .input-box::placeholder { color:#8696a0; }
+
+  .send-btn {
+    width:44px; height:44px; border-radius:50%;
+    background:var(--green); border:none; color:#fff;
+    font-size:20px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; transition: background 0.15s, transform 0.1s;
+  }
+  .send-btn:active { transform:scale(0.88); }
+
+  /* ===== NEW ROOM MODAL ===== */
+  .overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.75);
+    display:flex; align-items:flex-end; z-index:500;
+    opacity:0; pointer-events:none; transition:opacity 0.2s;
+  }
+  .overlay.open { opacity:1; pointer-events:all; }
+
+  .modal {
+    background:#1f2c34; width:100%; border-radius:20px 20px 0 0;
+    padding:22px 22px 38px;
+    transform:translateY(100%); transition:transform 0.3s;
+  }
+  .overlay.open .modal { transform:translateY(0); }
+
+  .modal-title { color:#fff; font-size:18px; font-weight:700; margin-bottom:16px; }
+
+  .modal-input {
+    width:100%; background:#2a3942; border:none; border-radius:12px;
+    padding:13px 16px; color:#e9edef; font-size:15px;
+    font-family:'Outfit',sans-serif; outline:none; margin-bottom:12px;
+  }
+  .modal-input::placeholder { color:#8696a0; }
+
+  .modal-save {
+    width:100%; background:var(--green); color:#fff; border:none;
+    border-radius:12px; padding:14px; font-size:16px;
+    font-family:'Outfit',sans-serif; font-weight:700; cursor:pointer;
+  }
+
+  .modal-note { color:#8696a0; font-size:12px; margin-bottom:14px; line-height:1.5; }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-80px);
+    background:#1f2c34; color:#e9edef; padding:10px 22px;
+    border-radius:24px; font-size:14px; font-weight:500;
+    transition:transform 0.3s; z-index:999;
+    border:1px solid #2a3942; white-space:nowrap;
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* ===== CONNECTING ===== */
+  #s-loading {
+    background:var(--chat-bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
+  }
+  .spinner {
+    width:48px; height:48px; border:4px solid #1e2b35;
+    border-top:4px solid var(--green); border-radius:50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { color:#8696a0; font-size:14px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="screen on" id="s-loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Inaungana na seva...</div>
+</div>
+
+<!-- CALCULATOR -->
+<div class="screen off-right" id="s-calc">
+  <div class="calc-display">
+    <div class="calc-history" id="ch"></div>
+    <div class="calc-value" id="cv">0</div>
+  </div>
+  <div class="calc-label">CALC PRO v3.1</div>
+  <div class="calc-grid">
+    <button class="cb sp" onclick="cAC()">AC</button>
+    <button class="cb sp" onclick="cToggle()">+/−</button>
+    <button class="cb sp" onclick="cPct()">%</button>
+    <button class="cb op" onclick="cOp('/')">÷</button>
+    <button class="cb" onclick="cN('7')">7</button>
+    <button class="cb" onclick="cN('8')">8</button>
+    <button class="cb" onclick="cN('9')">9</button>
+    <button class="cb op" onclick="cOp('*')">×</button>
+    <button class="cb" onclick="cN('4')">4</button>
+    <button class="cb" onclick="cN('5')">5</button>
+    <button class="cb" onclick="cN('6')">6</button>
+    <button class="cb op" onclick="cOp('-')">−</button>
+    <button class="cb" onclick="cN('1')">1</button>
+    <button class="cb" onclick="cN('2')">2</button>
+    <button class="cb" onclick="cN('3')">3</button>
+    <button class="cb op" onclick="cOp('+')">+</button>
+    <button class="cb zero" onclick="cN('0')">0</button>
+    <button class="cb" onclick="cDot()">.</button>
+    <button class="cb op" onclick="cEq()">=</button>
+  </div>
+</div>
+
+<!-- PIN -->
+<div class="screen off-right" id="s-pin">
+  <div class="pin-logo">🔒</div>
+  <div class="pin-title" id="pin-title">MjupaChat</div>
+  <div class="pin-sub" id="pin-sub">Weka PIN yako ya siri</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-keypad">
+    <button class="pk" onclick="pp('1')">1</button>
+    <button class="pk" onclick="pp('2')">2</button>
+    <button class="pk" onclick="pp('3')">3</button>
+    <button class="pk" onclick="pp('4')">4</button>
+    <button class="pk" onclick="pp('5')">5</button>
+    <button class="pk" onclick="pp('6')">6</button>
+    <button class="pk" onclick="pp('7')">7</button>
+    <button class="pk" onclick="pp('8')">8</button>
+    <button class="pk" onclick="pp('9')">9</button>
+    <button class="pk empty"></button>
+    <button class="pk" onclick="pp('0')">0</button>
+    <button class="pk del" onclick="pd()">⌫</button>
+  </div>
+  <div style="color:#444;font-size:11px;text-align:center;padding:0 30px;">
+    Fungua kwa calculator: bonyeza <span style="color:#00d26a">AC → 5 → 5 → 5</span>
+  </div>
+</div>
+
+<!-- USERNAME SETUP -->
+<div class="screen off-right" id="s-username">
+  <div class="setup-logo">👤</div>
+  <div class="setup-title">Jina lako la siri</div>
+  <div class="setup-sub">Watu wataona jina hili kwenye mazungumzo. Chagua jina lolote!</div>
+  <input class="setup-input" id="username-input" placeholder="Mfano: Simba, Dada, Bro..." maxlength="20">
+  <button class="setup-btn" onclick="saveUsername()">Endelea ➤</button>
+</div>
+
+<!-- ROOMS LIST -->
+<div class="screen off-right" id="s-rooms">
+  <div class="rooms-header">
+    <div class="rooms-title">
+      💬 MjupaChat
+      <button class="fab" onclick="openNewRoom()">+</button>
+    </div>
+    <div class="rooms-user" id="rooms-user-label">Umeingia kama: ...</div>
+  </div>
+  <div class="rooms-list" id="rooms-list">
+    <div style="text-align:center;color:#555;padding:50px 20px;font-size:14px;">
+      Bonyeza <b style="color:#00d26a">+</b> kuunda chumba cha mazungumzo
+    </div>
+  </div>
+  <button class="lock-btn" onclick="lockApp()">🔒 Funga → Rudi Calculator</button>
+</div>
+
+<!-- CHAT -->
+<div class="screen off-right" id="s-chat">
+  <div class="chat-header">
+    <button class="back-btn" onclick="backToRooms()">←</button>
+    <div class="chat-av" id="chat-av" style="background:#005c4b">💬</div>
+    <div class="chat-info">
+      <div class="chat-name" id="chat-room-name">Chumba</div>
+      <div class="chat-status" id="chat-online">Mtandaoni</div>
+    </div>
+    <div style="color:#8696a0;font-size:20px;cursor:pointer;" onclick="confirmClearChat()">🗑️</div>
+  </div>
+  <div class="msgs" id="msgs-area">
+    <div class="date-chip">Leo</div>
+  </div>
+  <div class="typing-indicator" id="typing-ind">
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <span style="color:#8696a0;font-size:12px;margin-left:6px;" id="typing-who"></span>
+  </div>
+  <div class="input-area">
+    <textarea class="input-box" id="msg-input" placeholder="Andika ujumbe..." rows="1"
+      oninput="autoResize(this);handleTyping()" onkeypress="checkSend(event)"></textarea>
+    <button class="send-btn" onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<!-- NEW ROOM MODAL -->
+<div class="overlay" id="new-room-modal">
+  <div class="modal">
+    <div class="modal-title">💬 Chumba Kipya cha Mazungumzo</div>
+    <div class="modal-note">
+      Unda chumba na wape rafiki yako <b style="color:#00d26a">jina la chumba</b> — ataandika jina hilo kuingia nanyi kuzungumza!
+    </div>
+    <input class="modal-input" id="room-name-input" placeholder="Jina la chumba (mfano: SiriYetu)" maxlength="30">
+    <button class="modal-save" onclick="createOrJoinRoom()">Ingia / Unda Chumba</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, set, onValue, serverTimestamp, remove, onDisconnect, off }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDQaE08F-vWVmWZWNqr5Y6HG3unEh8chQY",
+  authDomain: "mjupa-chat-f0046.firebaseapp.com",
+  projectId: "mjupa-chat-f0046",
+  storageBucket: "mjupa-chat-f0046.firebasestorage.app",
+  messagingSenderId: "623221644342",
+  appId: "1:623221644342:web:efb79414ada729ede00c97",
+  databaseURL: "https://mjupa-chat-f0046-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ===== STATE =====
+let myName     = localStorage.getItem('mjupa_name') || '';
+let myPin      = localStorage.getItem('mjupa_pin')  || '';
+let myRooms    = JSON.parse(localStorage.getItem('mjupa_rooms') || '[]');
+let currentRoom = null;
+let msgListener = null;
+let typingTimer  = null;
+let secretSeq    = [];
+
+const AVATARS = ['#005c4b','#2a4a7a','#6b2f2f','#2f5c2f','#5c2f5c','#7a5c00','#4a2f6b'];
+
+// ===== SCREEN MANAGER =====
+const screens = ['s-loading','s-calc','s-pin','s-username','s-rooms','s-chat'];
+function show(id) {
+  screens.forEach(s => {
+    const el = document.getElementById(s);
+    if (s === id) { el.className = 'screen on'; }
+    else {
+      const idx = screens.indexOf(s);
+      const cur = screens.indexOf(id);
+      el.className = 'screen ' + (idx < cur ? 'off-left' : 'off-right');
+    }
+  });
+}
+
+// ===== BOOT =====
+setTimeout(() => {
+  if (!myPin) {
+    // First time — show calc, secret will open PIN setup
+    show('s-calc');
+  } else {
+    show('s-calc');
+  }
+}, 1200);
+
+// ===== CALCULATOR =====
+let cv='0', cp='', cop='', newN=false;
+
+function updC(v) {
+  let d = v.toString();
+  if (d.length > 9) d = parseFloat(d).toExponential(3);
+  document.getElementById('cv').textContent = d;
+}
+
+window.cN = n => {
+  trackSecret(n);
+  if (cv==='0'||newN) { cv=n; newN=false; } else { if(cv.length<9) cv+=n; }
+  updC(cv);
+};
+window.cDot = () => {
+  if (newN) { cv='0.'; newN=false; } else if (!cv.includes('.')) cv+='.';
+  updC(cv);
+};
+window.cOp = op => {
+  cp=cv; cop=op; newN=true;
+  const m={'/':'÷','*':'×','-':'−','+':'+'};
+  document.getElementById('ch').textContent = cp+' '+(m[op]||op);
+};
+window.cEq = () => {
+  if (!cop||!cp) return;
+  let a=parseFloat(cp),b=parseFloat(cv),r;
+  if(cop==='/')  r=b?a/b:'Error';
+  else if(cop==='*') r=a*b;
+  else if(cop==='-') r=a-b;
+  else r=a+b;
+  const m={'/':'÷','*':'×','-':'−','+':'+'};
+  document.getElementById('ch').textContent=cp+' '+(m[cop]||cop)+' '+cv+' =';
+  cv=r.toString(); cop=''; cp=''; newN=true; updC(cv);
+};
+window.cAC = () => {
+  cv='0'; cp=''; cop=''; newN=false;
+  document.getElementById('ch').textContent='';
+  updC('0');
+  trackSecret('AC');
+};
+window.cToggle = () => { cv=(parseFloat(cv)*-1).toString(); updC(cv); };
+window.cPct    = () => { cv=(parseFloat(cv)/100).toString(); updC(cv); };
+
+function trackSecret(k) {
+  const SEQ = ['AC','5','5','5'];
+  secretSeq.push(k);
+  if (secretSeq.length > 4) secretSeq.shift();
+  if (secretSeq.join(',') === SEQ.join(',')) {
+    secretSeq = [];
+    openApp();
+  }
+}
+
+function openApp() {
+  if (!myPin) {
+    setupPin();
+  } else {
+    showPinEntry();
+  }
+}
+
+// ===== PIN =====
+let pinBuf='', pinMode='enter', pinConfirm=null;
+
+function setupPin() {
+  pinMode='setup'; pinBuf='';
+  document.getElementById('pin-title').textContent = 'Weka PIN Mpya';
+  document.getElementById('pin-sub').textContent   = 'Chagua tarakimu 4 za siri yako';
+  show('s-pin');
+  updDots();
+}
+
+function showPinEntry() {
+  pinMode='enter'; pinBuf='';
+  document.getElementById('pin-title').textContent = 'MjupaChat';
+  document.getElementById('pin-sub').textContent   = 'Weka PIN yako ya siri';
+  show('s-pin');
+  updDots();
+}
+
+window.pp = d => {
+  if (pinBuf.length>=4) return;
+  pinBuf+=d; updDots();
+  if (pinBuf.length===4) setTimeout(checkPin,180);
+};
+window.pd = () => { pinBuf=pinBuf.slice(0,-1); updDots(); };
+
+function updDots() {
+  for(let i=0;i<4;i++){
+    const dot=document.getElementById('pd'+i);
+    dot.classList.toggle('filled', i<pinBuf.length);
+    dot.classList.remove('error');
+  }
+}
+
+function checkPin() {
+  if (pinMode==='enter') {
+    if (pinBuf===myPin) {
+      if (!myName) show('s-username');
+      else { show('s-rooms'); loadRooms(); }
+    } else {
+      flashPin(); toast('❌ PIN si sahihi!');
+    }
+  } else if (pinMode==='setup') {
+    pinConfirm=pinBuf; pinBuf=''; pinMode='confirm';
+    document.getElementById('pin-sub').textContent='Rudia PIN kukakamua';
+    updDots();
+  } else {
+    if (pinBuf===pinConfirm) {
+      myPin=pinBuf; localStorage.setItem('mjupa_pin',myPin);
+      toast('✅ PIN imewekwa!');
+      show('s-username');
+    } else {
+      flashPin(); pinMode='setup'; pinBuf='';
+      document.getElementById('pin-sub').textContent='Hazilingani! Jaribu tena';
+      setTimeout(updDots,500);
+    }
+  }
+}
+
+function flashPin() {
+  for(let i=0;i<4;i++) {
+    const d=document.getElementById('pd'+i);
+    d.classList.add('filled','error');
+  }
+  pinBuf='';
+  setTimeout(updDots,700);
+}
+
+// ===== USERNAME =====
+window.saveUsername = () => {
+  const name = document.getElementById('username-input').value.trim();
+  if (!name) { toast('⚠️ Andika jina lako!'); return; }
+  myName=name; localStorage.setItem('mjupa_name',name);
+  show('s-rooms'); loadRooms();
+};
+
+// ===== ROOMS =====
+function loadRooms() {
+  document.getElementById('rooms-user-label').textContent = 'Umeingia kama: ' + myName;
+  renderRooms();
+}
+
+function renderRooms() {
+  const list = document.getElementById('rooms-list');
+  if (myRooms.length===0) {
+    list.innerHTML='<div style="text-align:center;color:#555;padding:50px 20px;font-size:14px;">Bonyeza <b style="color:#00d26a">+</b> kuunda au kuingia chumba</div>';
+    return;
+  }
+  list.innerHTML='';
+  myRooms.forEach((room,i) => {
+    const color = AVATARS[i%AVATARS.length];
+    const initial = room.name.charAt(0).toUpperCase();
+    const div = document.createElement('div');
+    div.className='room-item';
+    div.innerHTML=`
+      <div class="room-av" style="background:${color}">${initial}</div>
+      <div class="room-details">
+        <div class="room-name">${esc(room.name)}</div>
+        <div class="room-preview" id="prev-${room.id}">Bonyeza kuangalia...</div>
+      </div>
+      <div class="room-meta">
+        <div class="room-time" id="time-${room.id}"></div>
+      </div>
+    `;
+    div.onclick = () => openChat(room, color);
+    list.appendChild(div);
+    // Load last message preview
+    loadPreview(room.id);
+  });
+}
+
+function loadPreview(roomId) {
+  const msgsRef = ref(db, `rooms/${roomId}/messages`);
+  onValue(msgsRef, snap => {
+    if (!snap.exists()) return;
+    const msgs = snap.val();
+    const keys = Object.keys(msgs);
+    const last = msgs[keys[keys.length-1]];
+    const prevEl = document.getElementById('prev-'+roomId);
+    const timeEl = document.getElementById('time-'+roomId);
+    if (prevEl) prevEl.textContent = (last.sender===myName?'Wewe: ':last.sender+': ') + last.text;
+    if (timeEl) timeEl.textContent = last.timeStr || '';
+  }, {onlyOnce:true});
+}
+
+window.openNewRoom = () => {
+  document.getElementById('room-name-input').value='';
+  document.getElementById('new-room-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('room-name-input').focus(),300);
+};
+
+document.getElementById('new-room-modal').addEventListener('click', function(e){
+  if(e.target===this) this.classList.remove('open');
+});
+
+window.createOrJoinRoom = () => {
+  const name = document.getElementById('room-name-input').value.trim();
+  if (!name) { toast('⚠️ Andika jina la chumba!'); return; }
+  
+  // Normalize room ID
+  const roomId = name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  
+  // Check if already joined
+  const existing = myRooms.find(r=>r.id===roomId);
+  if (existing) {
+    document.getElementById('new-room-modal').classList.remove('open');
+    openChat(existing, AVATARS[myRooms.indexOf(existing)%AVATARS.length]);
+    return;
+  }
+
+  // Join/create room
+  const room = { id:roomId, name:name };
+  myRooms.push(room);
+  localStorage.setItem('mjupa_rooms', JSON.stringify(myRooms));
+  
+  // Mark entry in Firebase
+  set(ref(db, `rooms/${roomId}/meta`), { name, created: Date.now() });
+  
+  document.getElementById('new-room-modal').classList.remove('open');
+  renderRooms();
+  openChat(room, AVATARS[(myRooms.length-1)%AVATARS.length]);
+  toast('✅ Umeingia chumba: ' + name);
+};
+
+// ===== CHAT =====
+function openChat(room, color) {
+  currentRoom = room;
+  document.getElementById('chat-room-name').textContent = room.name;
+  document.getElementById('chat-av').style.background = color;
+  document.getElementById('chat-av').textContent = room.name.charAt(0).toUpperCase();
+  
+  // Clear messages
+  const area = document.getElementById('msgs-area');
+  area.innerHTML = '<div class="date-chip">Leo</div>';
+  
+  show('s-chat');
+  
+  // Listen for messages
+  if (msgListener) off(ref(db, `rooms/${currentRoom.id}/messages`), 'child_added', msgListener);
+  
+  const msgsRef = ref(db, `rooms/${room.id}/messages`);
+  msgListener = onChildAdded(msgsRef, snap => {
+    const m = snap.val();
+    appendMsg(m);
+  });
+
+  // Typing indicator
+  const typRef = ref(db, `rooms/${room.id}/typing`);
+  onValue(typRef, snap => {
+    if (!snap.exists()) { hideTyping(); return; }
+    const typers = Object.values(snap.val()).filter(t => t.name !== myName && (Date.now()-t.ts)<4000);
+    if (typers.length>0) {
+      document.getElementById('typing-who').textContent = typers[0].name + ' anaandika...';
+      document.getElementById('typing-ind').classList.add('show');
+    } else {
+      hideTyping();
+    }
+  });
+
+  // Online presence
+  const presRef = ref(db, `rooms/${room.id}/online/${myName}`);
+  set(presRef, { name:myName, ts:Date.now() });
+  onDisconnect(presRef).remove();
+
+  const onlineRef = ref(db, `rooms/${room.id}/online`);
+  onValue(onlineRef, snap => {
+    if (!snap.exists()) { document.getElementById('chat-online').textContent='Hakuna mtu'; return; }
+    const count = Object.keys(snap.val()).length;
+    document.getElementById('chat-online').textContent = count>1 ? count+' watu mtandaoni' : 'Wewe tu mtandaoni';
+  });
+}
+
+function appendMsg(m) {
+  const area = document.getElementById('msgs-area');
+  const div  = document.createElement('div');
+  div.className = 'msg ' + (m.sender===myName?'me':'other');
+  let inner = '';
+  if (m.sender!==myName) inner += `<div class="msg-sender">${esc(m.sender)}</div>`;
+  inner += esc(m.text).replace(/\n/g,'<br>');
+  inner += `<div class="msg-time">${m.timeStr||''}${m.sender===myName?' ✓✓':''}</div>`;
+  div.innerHTML = inner;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function hideTyping() {
+  document.getElementById('typing-ind').classList.remove('show');
+}
+
+window.sendMsg = () => {
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text || !currentRoom) return;
+  
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  
+  push(ref(db, `rooms/${currentRoom.id}/messages`), {
+    text,
+    sender: myName,
+    timeStr,
+    ts: Date.now()
+  });
+  
+  // Clear typing
+  set(ref(db, `rooms/${currentRoom.id}/typing/${myName}`), null);
+  
+  input.value='';
+  input.style.height='';
+};
+
+window.handleTyping = () => {
+  if (!currentRoom) return;
+  set(ref(db, `rooms/${currentRoom.id}/typing/${myName}`), { name:myName, ts:Date.now() });
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    set(ref(db, `rooms/${currentRoom.id}/typing/${myName}`), null);
+  }, 3000);
+};
+
+window.checkSend = e => {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+};
+
+window.backToRooms = () => {
+  if (currentRoom) {
+    set(ref(db, `rooms/${currentRoom.id}/typing/${myName}`), null);
+    off(ref(db, `rooms/${currentRoom.id}/messages`));
+  }
+  currentRoom=null;
+  show('s-rooms');
+  renderRooms();
+};
+
+window.confirmClearChat = () => {
+  if (!currentRoom) return;
+  if (confirm('Futa mazungumzo yote? Hii itaathiri watu wote kwenye chumba hiki!')) {
+    remove(ref(db, `rooms/${currentRoom.id}/messages`));
+    document.getElementById('msgs-area').innerHTML='<div class="date-chip">Leo</div>';
+    toast('🗑️ Mazungumzo yamefutwa');
+  }
+};
+
+// ===== LOCK =====
+window.lockApp = () => {
+  if (currentRoom) {
+    set(ref(db, `rooms/${currentRoom.id}/typing/${myName}`), null);
+    off(ref(db, `rooms/${currentRoom.id}/messages`));
+    currentRoom=null;
+  }
+  show('s-calc');
+  secretSeq=[];
+};
+
+// ===== UTILS =====
+window.autoResize = el => {
+  el.style.height='';
+  el.style.height = Math.min(el.scrollHeight,120)+'px';
+};
+
+function esc(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+window.toast=toast;
+</script>
+</body>
+</html>
