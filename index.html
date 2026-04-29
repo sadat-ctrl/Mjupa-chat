@@ -941,6 +941,19 @@ function toast(msg) {
 }
 
 window.toast=toast;
+window.openMediaPicker=()=>{const i=document.getElementById('file-input');i.value='';i.click();};
+const fi=document.createElement('input');fi.type='file';fi.id='file-input';fi.accept='image/*,video/*';fi.style.display='none';document.body.appendChild(fi);
+fi.addEventListener('change',async(e)=>{
+const file=e.target.files[0];if(!file||!currentRoom)return;
+const isVideo=file.type.startsWith('video/');
+const formData=new FormData();
+formData.append('file',file);
+formData.append('upload_preset','mjupa_unsigned');
+toast('⏳ Inapakia...');
+const res=await fetch(`https://api.cloudinary.com/v1_1/ddwt4yyc2/${isVideo?'video':'image'}/upload`,{method:'POST',body:formData});
+const data=await res.json();
+if(data.secure_url){const now=new Date();const timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');push(ref(db,`rooms/${currentRoom.id}/messages`),{url:data.secure_url,sender:myName,timeStr,ts:Date.now(),type:isVideo?'video':'image'});toast('✅ Imepakiwa!');}else{toast('❌ Imeshindwa!');}
+});
 </script>
 </body>
 </html>
