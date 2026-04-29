@@ -494,6 +494,7 @@ if('serviceWorker' in navigator){
     <span style="color:#8696a0;font-size:12px;margin-left:6px;" id="typing-who"></span>
   </div>
   <div class="input-area">
+    <button class="media-btn" onclick="openMediaPicker()">📎</button>
     <textarea class="input-box" id="msg-input" placeholder="Andika ujumbe..." rows="1"
       oninput="autoResize(this);handleTyping()" onkeypress="checkSend(event)"></textarea>
     <button class="send-btn" onclick="sendMsg()">➤</button>
