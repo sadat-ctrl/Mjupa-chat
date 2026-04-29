@@ -842,17 +842,22 @@ function openChat(room, color) {
   });
 }
 
-function appendMsg(m) {
-  const area = document.getElementById('msgs-area');
-  const div  = document.createElement('div');
-  div.className = 'msg ' + (m.sender===myName?'me':'other');
-  let inner = '';
-  if (m.sender!==myName) inner += `<div class="msg-sender">${esc(m.sender)}</div>`;
-  inner += esc(m.text).replace(/\n/g,'<br>');
-  inner += `<div class="msg-time">${m.timeStr||''}${m.sender===myName?' ✓✓':''}</div>`;
-  div.innerHTML = inner;
-  area.appendChild(div);
-  area.scrollTop = area.scrollHeight;
+function appendMsg(m){
+  const area=document.getElementById('msgs-area');
+  const div=document.createElement('div');
+  div.className='msg '+(m.sender===myName?'me':'other');
+  let inner='';
+  if(m.sender!==myName) inner+=`<div class="msg-sender">${esc(m.sender)}</div>`;
+  if(m.type==='image'){
+    inner+=`<img src="${m.url}" style="max-width:100%;max-height:220px;border-radius:8px;display:block;margin-bottom:16px;" onclick="window.open('${m.url}')">`;
+  } else if(m.type==='video'){
+    inner+=`<video src="${m.url}" controls playsinline style="max-width:100%;max-height:220px;border-radius:8px;display:block;margin-bottom:16px;"></video>`;
+  } else {
+    inner+=esc(m.text||'').replace(/\n/g,'<br>');
+  }
+  inner+=`<div class="msg-time">${m.timeStr||''}${m.sender===myName?' ✓✓':''}</div>`;
+  div.innerHTML=inner;
+  area.appendChild(div);area.scrollTop=area.scrollHeight;
 }
 
 function hideTyping() {
